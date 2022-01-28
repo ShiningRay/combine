@@ -16,8 +16,12 @@ end
 
 def combine_all
   Thread.new do
-    combine($queue, 0, [])
-    $queue << []
+    all = []
+    combine(all, 0, [])
+    all.shuffle!
+    all[0..2022].each_with_index do |a, b|
+      $queue << [b, a]
+    end
   end
 end
 
@@ -49,14 +53,12 @@ end
 
 def start_drawer
   Thread.new do
-    i=0
     loop do
-    comb = $queue.pop
+      i, comb = $queue.pop
 
-    puts comb.join(',')
-    break if comb.size == 0
-    draw i, comb
-    i+=1
+      puts comb.join(',')
+      break unless i
+      draw i, comb
     end
   end
 end
@@ -68,6 +70,6 @@ end
 #   i += 1
 # end
 a = combine_all
-b = start_drawer
+b = Array.new(4){start_drawer}
 a.join
-b.join
+b.each {|t| t.join}
