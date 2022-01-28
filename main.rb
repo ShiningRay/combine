@@ -5,6 +5,7 @@ require "oily_png"
 
 Layers = []
 $queue = Queue.new 
+Combinations = Array.new(4){[]}
 Dir.glob(File.join(__dir__, '/layers/*.png')).each do |filename|
   name = File.basename(filename, '.png')
   layer, idx = name.split('_')
@@ -15,19 +16,39 @@ Dir.glob(File.join(__dir__, '/layers/*.png')).each do |filename|
 end
 
 def combine_all
-  Thread.new do
-    combine($queue, 0, [])
-    $queue << []
+  combine(0, [])
+  Combinations.each do |c|
+    c.shuffle!
   end
+  Thread.new do
+    0.upto(2022) do |i|
+      comb = case i % 10
+      when 1,3,5
+        Combinations[0].pop
+      when 2,4,6
+        Combinations[1].pop
+      when 7,9,0
+        Combinations[2].pop
+      when 8
+        Combinations[3].pop
+      end
+      $queue << [i, comb]
+    end
+    0.upto(4) do 
+      $queue << []
+    end
+  end
+
 end
 
-def combine(yielder, layer, combination)
+def combine(layer, combination)
   if layer < Layers.size
     Layers[layer].sort.each do |i|
-      combine(yielder, layer + 1, combination + [i])
+      combine(layer + 1, combination + [i])
     end
   else
-    yielder << combination
+    Combinations[combination[0]] << combination
+    # yielder << combination
   end
 end
 
@@ -49,14 +70,11 @@ end
 
 def start_drawer
   Thread.new do
-    i=0
     loop do
-    comb = $queue.pop
-
-    puts comb.join(',')
-    break if comb.size == 0
-    draw i, comb
-    i+=1
+      i, comb = $queue.pop
+      puts comb.join(',')
+      break unless i
+      draw i, comb
     end
   end
 end
@@ -68,6 +86,6 @@ end
 #   i += 1
 # end
 a = combine_all
-b = start_drawer
+b = Array.new(4){start_drawer}
 a.join
-b.join
+b.map{|t| t.join }
